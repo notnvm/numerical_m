@@ -1,7 +1,0 @@
-﻿  menu.cpp
-  main.cpp
-G:\dev\numerical methods\main\numerical\method\main.cpp(26,19): warning C4244: аргумент: преобразование "const float" в "int", возможна потеря данных
-G:\dev\numerical methods\main\numerical\method\main.cpp(26,19): warning C4244: аргумент: преобразование "float" в "int", возможна потеря данных
-  method.cpp
-  Создание кода...
-  numerical_lab.vcxproj -> G:\dev\numerical methods\main\Debug\numerical_lab.exe
