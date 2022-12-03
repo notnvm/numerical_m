@@ -5,6 +5,9 @@
 #include <Windows.h>
 #pragma comment(lib, "d3d9.lib")
 
+#include <D3dx9tex.h>
+#pragma comment(lib, "D3dx9")
+
 #include "../imgui/imgui.h"
 #include "../imgui/imgui_impl_dx9.h"
 #include "../imgui/imgui_impl_win32.h"
@@ -31,21 +34,24 @@ namespace ui {
 }
 
 namespace ui {
-	void render();
-	void render_plot();
-	void render_table();
+	void render(HWND hWnd);
+	void render_plot(float width, float height);
+	void render_table(float width, float height);
+
+	void show_info_ww(bool opened);
 }
 
 namespace ui {
-	// inline LPDIRECT3DDEVICE9 dev;
 	inline const char* window_title = "RK4";
 }
 
 namespace ui {
-	inline const float width = 1100.0f;
-	inline const float height = 740.0f;
-	inline ImVec2 window_pos{ 100,100 };
+	inline const float width = /*1100.0f*/1680.0f;
+	inline const float height = /*740.0f*/1050.0f;
+	inline ImVec2 window_pos{ 0,0 };
 	inline ImVec2 window_size{ width, height };
 	inline DWORD window_flags = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoTitleBar;
 	inline DWORD table_flags = ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollX | ImGuiTableFlags_ScrollY | ImGuiTableFlags_Resizable | ImGuiTableFlags_SizingStretchSame;
 }
+
+bool LoadTextureFromFile(const char* filename, PDIRECT3DTEXTURE9* out_texture, int* out_width, int* out_height);

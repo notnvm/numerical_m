@@ -1,29 +1,33 @@
 #include "method.h"
 
 extern parameters init;
+out outers;
 
-// u_1 = u ; u_2 = u' || w = v0/l w' = -g*u/l u0 = pi/10, v0 = 0??
-
-// du - u, dduu - du' //
-
-double DSystem::problem_1(double u_0) { // u 
-	return u_0;
+double DSystem::problem_1(double t, double x, double y) {
+	return y;
 }
 
-double DSystem::problem_2(double u_1) { // u'' + g*u_1/l = 0 => u' = -g*u_1/l
-	return -g * u_1 / init.l;
+double DSystem::problem_2(double t,double x,double y) {
+	return -init.g * x / init.l;
 }
 
 void DSystem::RK4() {
 	clear();
+	outers.data.clear();
 
 	double h = init.step;
 
-	du.push_back(init.u0);
-	duh.push_back(init.u0);
-	dduu.push_back(init.v0);
-	dduuh.push_back(init.v0);
-	sol[init.t_min] = init.u0;
+	double v0x = init.x0;
+	double v0y = init.y0;
+
+	x.push_back(v0x);
+	xh.push_back(v0x);
+	y.push_back(v0y);
+	yh.push_back(v0y);
+
+	sol_x[init.t_min] = v0x;
+	sol_y[init.t_min] = v0y;
+
 
 	double k1 = 0, k2 = 0, k3 = 0, k4 = 0; 
 	double l1 = 0, l2 = 0, l3 = 0, l4 = 0; 
@@ -31,100 +35,209 @@ void DSystem::RK4() {
 	double k1h = 0, k2h = 0, k3h = 0, k4h = 0; 
 	double l1h = 0, l2h = 0, l3h = 0, l4h = 0; 
 
-	size_t counter = 0, counter_h = 0;
+	size_t counter = 0, counter_h = 0, div = 0, doub = 0;
 
 	double s = 0;
 	double s1 = 0, s2 = 0;
 
-	for (double t_curr = init.t_min; t_curr <= init.t_max;) {
+	double t_curr_h = init.t_min;
 
-		size_t doub = 0, div = 0;
+	log(
+		counter,
+		init.t_min,
+		h,
+		sol_x[init.t_min],
+		xh.back(),
+		sol_x[init.t_min] - xh.back(),
+		sol_y[init.t_min],
+		yh.back(),
+		sol_y[init.t_min] - yh.back(),
+		s,
+		doub,
+		div
+	);
 
-		if (counter_h % 2 == 0) {
-			l1 = problem_1(du[counter]);
-			l2 = problem_1(du[counter] + h / 2 * l1);
-			l3 = problem_1(du[counter] + h / 2 * l2);
-			l4 = problem_1(du[counter] + h * l3);
+	for (double t_curr = init.t_min; (t_curr < init.t_max - init.eps_br) && (counter <= init.n_max);) {
 
-			k1 = problem_2(dduu[counter]);
-			k2 = problem_2(dduu[counter] + h / 2 * k1);
-			k3 = problem_2(dduu[counter] + h / 2 * k2);
-			k4 = problem_2(dduu[counter] + h * k3);
+		doub = 0, div = 0;
 
-			++counter;
-			du.push_back(du[counter - 1] + h / 6 * (l1 + 2 * l2 + 2 * l3 + l4));
-			dduu.push_back(dduu[counter - 1] + h / 6 * (k1 + 2 * k2 + 2 * k3 + k4));
+		if (h > outers.max_step) {
+			outers.max_step = h;
+			outers.max_step_time = t_curr;
+		}
+		if (h < outers.min_step) {
+			outers.min_step = h;
+			outers.min_step_time = t_curr;
 		}
 
-		l1h = problem_1(duh[counter_h]);
-		l2h = problem_1(duh[counter_h] + h / 4 * l1h);
-		l3h = problem_1(duh[counter_h] + h / 4 * l2h);
-		l4h = problem_1(duh[counter_h] + h / 2 * l3h);
 
-		k1h = problem_2(dduuh[counter_h]);
-		k2h = problem_2(dduuh[counter_h] + h / 4 * k1h);
-		k3h = problem_2(dduuh[counter_h] + h / 4 * k2h);
-		k4h = problem_2(dduuh[counter_h] + h / 2 * k3h);
+		if (counter_h % 2 == 0) {
+			l1 = problem_1(t_curr, x[counter], y[counter]);
+			k1 = problem_2(t_curr, x[counter], y[counter]);
+
+			l2 = problem_1(t_curr + h / 2, x[counter] + h / 2 * l1, y[counter] + h / 2 * k1);
+			k2 = problem_2(t_curr + h / 2, x[counter] + h / 2 * l1, y[counter] + h / 2 * k1);
+
+			l3 = problem_1(t_curr + h / 2, x[counter] + h / 2 * l2, y[counter] + h / 2 * k2);
+			k3 = problem_2(t_curr + h / 2, x[counter] + h / 2 * l2, y[counter] + h / 2 * k2);
+
+			l4 = problem_1(t_curr + h, x[counter] + h * l3, y[counter] + h * k3);
+			k4 = problem_2(t_curr + h, x[counter] + h * l3, y[counter] + h * k3);
+
+			++counter;
+			x.push_back(x[counter - 1] + h / 6 * (l1 + 2 * l2 + 2 * l3 + l4));
+			y.push_back(y[counter - 1] + h / 6 * (k1 + 2 * k2 + 2 * k3 + k4));
+		}
+
+		t_curr_h += h / 2;
+
+		l1h = problem_1(t_curr_h, xh[counter_h], yh[counter_h]);
+		k1h = problem_2(t_curr_h, xh[counter_h], yh[counter_h]);
+
+		l2h = problem_1(t_curr_h + h / 4, xh[counter_h] + h / 4 * l1h, yh[counter_h] + h / 4 * k1h);
+		k2h = problem_2(t_curr_h + h / 4, xh[counter_h] + h / 4 * l1h, yh[counter_h] + h / 4 * k1h);
+
+		l3h = problem_1(t_curr_h + h / 4, xh[counter_h] + h / 4 * l2h, yh[counter_h] + h / 4 * k2h);
+		k3h = problem_2(t_curr_h + h / 4, xh[counter_h] + h / 4 * l2h, yh[counter_h] + h / 4 * k2h);
+
+		l4h = problem_1(t_curr_h + h / 2, xh[counter_h] + h / 2 * l3h, yh[counter_h] + h / 2 * k3h);
+		k4h = problem_2(t_curr_h + h / 2, xh[counter_h] + h / 2 * l3h, yh[counter_h] + h / 2 * k3h);
 
 		++counter_h;
-		duh.push_back(duh[counter_h - 1] + h / 12 * (l1h + 2 * l2h + 2 * l3h + l4h));
-		dduuh.push_back(dduuh[counter_h - 1] + h / 12 * (k1h + 2 * k2h + 2 * k3h + k4h));
+		xh.push_back(xh[counter_h - 1] + h / 12 * (l1h + 2 * l2h + 2 * l3h + l4h));
+		yh.push_back(yh[counter_h - 1] + h / 12 * (k1h + 2 * k2h + 2 * k3h + k4h));
 
-		if (duh.size() % 2 != 0 && duh.size() != 1) {
-			s1 = (duh.back() - du.back()) / 15;
-			s1 = (dduuh.back() - dduu.back()) / 15;
-			s =/* std::max(s1, s2)*/(duh.back() - du.back()) / 15;
+		if ((xh.size() % 2 != 0 && xh.size() != 1) && (yh.size() % 2 != 0 && yh.size() != 1)) {
+			s1 = (xh.back() - x.back()) / 15;
+			s2 = (yh.back() - y.back()) / 15;
+			s = std::max(std::abs(s1), std::abs(s2));
+
+			if (s > outers.max_onlp)
+				outers.max_onlp = s;
 
 			if (std::abs(s) >= (init.eps / 32) && std::abs(s) <= init.eps) {
-				time.push_back(t_curr);
 				t_curr += h;
-				sol[t_curr] = du.back();
-				counter_h = 0;
+				sol_x[t_curr] = x[counter];
+				sol_y[t_curr] = y[counter];
+;				counter_h = 0;
 
-				duh.clear();
-				dduuh.clear();
-				duh.push_back(du[counter]);
-				dduuh.push_back(dduu[counter]);
+				log(
+					counter,
+					t_curr,
+					h ,
+					sol_x[t_curr],
+					//x.back(),
+					xh.back(),
+					sol_x[t_curr] - xh.back(),
+					//x.back() - xh.back(),
+					sol_y[t_curr],
+					//y.back(),
+					yh.back(),
+					sol_y[t_curr] - yh.back(),
+					//y.back() - yh.back(),
+					s,
+					doub,
+					div
+				);
+
+				xh.clear();
+				yh.clear();
+				xh.push_back(x[counter]);
+				yh.push_back(y[counter]);
 			}
 
 			if (std::abs(s) < (init.eps / 32)) {
-				time.push_back(t_curr);
-				t_curr += h; 
-				sol[t_curr] = du.back();
+				t_curr += h;
+				doub = 1;
 				h *= 2;
 				doub = 1;
 
+				sol_x[t_curr] = x[counter];
+				sol_y[t_curr] = y[counter];
 				counter_h = 0;
 
-				duh.clear();
-				dduuh.clear();
-				duh.push_back(du[counter]);
-				dduuh.push_back(dduu[counter]);
+				log(
+					counter,
+					t_curr,
+					h,
+					sol_x[t_curr],
+					//x.back(),
+					xh.back(),
+					sol_x[t_curr] - xh.back(),
+					//x.back() - xh.back(),
+					sol_y[t_curr],
+					//y.back(),
+					yh.back(),
+					sol_y[t_curr] - yh.back(),
+					//y.back() - yh.back(),
+					s,
+					doub,
+					div
+				);
+
+				outers.pows_counter += 1;
+
+			    //h *= 2;
+				xh.clear();
+				yh.clear();
+				xh.push_back(x[counter]);
+				yh.push_back(y[counter]);
 			}
 
 			if (std::abs(s) > init.eps) {
-
-				h /= 2;
 				div = 1;
+
+				log(
+					counter,
+					t_curr,
+					h,
+					sol_x[t_curr],
+					//x.back(),
+					xh.back(),
+					sol_x[t_curr] - xh.back(),
+					//x.back() - xh.back(),
+					sol_y[t_curr],
+					//y.back(),
+					yh.back(),
+					sol_y[t_curr] - yh.back(),
+					//y.back() - yh.back(),
+					s,
+					doub,
+					div
+				);
+				h /= 2;
+
+				outers.divs_counter += 1;
+
+				t_curr_h = t_curr;
 
 				counter_h = 0;
 				--counter;
 
-				du.pop_back();
-				dduu.pop_back();
-				duh.clear();
-				dduuh.clear();
-				duh.push_back(du[counter]);
-				dduuh.push_back(dduu[counter]);
+				x.pop_back();
+				y.pop_back();
+				xh.clear();
+				yh.clear();
+				xh.push_back(x[counter]);
+				yh.push_back(y[counter]);
 			}
 		}
 	}
-	time.push_back(1);
 }
 
 void DSystem::clear() {
-	du.clear();
-	duh.clear();
-	dduu.clear();
-	dduuh.clear();
+	x.clear();
+	xh.clear();
+	y.clear();
+	yh.clear();
+	sol_x.clear();
+	sol_y.clear();
+	outers.data.clear();
+	outers.pows_counter = 0;
+	outers.divs_counter = 0;
+}
+
+void
+DSystem::log(size_t idx, double x, double h, double v1, double v1h, double v1_diff, double v2, double v2h, double v2_diff, double onlp, size_t pows, size_t divs) {
+	outers.data.push_back(std::make_tuple(idx, x, h, v1, v1h, v1_diff, v2, v2h, v2_diff, onlp, pows, divs));
 }

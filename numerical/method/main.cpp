@@ -15,6 +15,24 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 extern ui::state state_t;
 
+// Simple helper function to load an image into a DX9 texture with common settings
+bool LoadTextureFromFile(const char* filename, PDIRECT3DTEXTURE9* out_texture, int* out_width, int* out_height)
+{
+    // Load texture from disk
+    PDIRECT3DTEXTURE9 texture;
+    HRESULT hr = D3DXCreateTextureFromFileA(g_pd3dDevice, filename, &texture);
+    if (hr != S_OK)
+        return false;
+
+    // Retrieve description of the texture surface so we can access its size
+    D3DSURFACE_DESC my_image_desc;
+    texture->GetLevelDesc(0, &my_image_desc);
+    *out_texture = texture;
+    *out_width = (int)my_image_desc.Width;
+    *out_height = (int)my_image_desc.Height;
+    return true;
+}
+
 int main(int, char**)
 {
     ::ShowWindow(::GetConsoleWindow(), SW_HIDE);
@@ -23,7 +41,7 @@ int main(int, char**)
     //ImGui_ImplWin32_EnableDpiAwareness();
     WNDCLASSEXW wc = { sizeof(wc), CS_CLASSDC, WndProc, 0L, 0L, GetModuleHandle(NULL), NULL, NULL, NULL, NULL, L"_", NULL };
     ::RegisterClassExW(&wc);
-    HWND hwnd = ::CreateWindowW(wc.lpszClassName, L"Numerical methods", WS_OVERLAPPED | WS_MINIMIZEBOX | WS_SYSMENU, ui::window_pos.x, ui::window_pos.y, ui::width, ui::height, NULL, NULL, wc.hInstance, NULL);
+    HWND hwnd = ::CreateWindowW(wc.lpszClassName, L"Смолин К. Команда-5", WS_OVERLAPPED ^ WS_THICKFRAME | WS_SYSMENU | WS_MAXIMIZEBOX | WS_MINIMIZEBOX, ui::window_pos.x, ui::window_pos.y, ui::width, ui::height, NULL, NULL, wc.hInstance, NULL);
 
     // Initialize Direct3D
     if (!CreateDeviceD3D(hwnd))
@@ -58,7 +76,8 @@ int main(int, char**)
     // Setup fonts
     auto config = ImFontConfig();
     config.FontDataOwnedByAtlas = false;
-    ImGui::GetIO().Fonts->AddFontFromMemoryTTF(font, sizeof(font), 17.0f, &config);
+    ImGui::GetIO().Fonts->AddFontFromMemoryTTF(font, sizeof(font), 17.0f, &config, io.Fonts->GetGlyphRangesCyrillic());
+    ImGui::GetIO().Fonts->AddFontFromMemoryTTF(icons, sizeof(icons), 17.0f, &config, io.Fonts->GetGlyphRangesCyrillic());
 
     // Main loop
     bool done = false;
@@ -84,7 +103,7 @@ int main(int, char**)
         // Draw menu
         ImGui::NewFrame();
         {
-            ui::render();
+            ui::render(hwnd);
         }
         ImGui::EndFrame();
 
@@ -168,6 +187,8 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
     if (ImGui_ImplWin32_WndProcHandler(hWnd, msg, wParam, lParam))
         return true;
 
+    LPMINMAXINFO lpMMI = (LPMINMAXINFO)lParam;
+
     switch (msg)
     {
     case WM_SIZE:
@@ -182,6 +203,10 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
         if ((wParam & 0xfff0) == SC_KEYMENU) // Disable ALT application menu
             return 0;
         break;
+    case WM_GETMINMAXINFO:
+        lpMMI->ptMinTrackSize.x = ui::window_size.x;
+        lpMMI->ptMinTrackSize.y = ui::window_size.y;
+        return 0;
     case WM_DESTROY:
         ::PostQuitMessage(0);
         return 0;
